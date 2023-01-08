@@ -3,6 +3,8 @@ from flask import render_template, redirect, flash, request, url_for
 from comunidade.forms import FormLogin, FormCriarConta
 from comunidade.models import Usuario
 
+
+
 @app.route('/')
 def home():
     return render_template('home.html')
