@@ -7,8 +7,8 @@ from comunidade.models import Usuario, Post
 
 
 with app.app_context():
-    meus_usuario = Usuario.query.first()
-    print(meus_usuario)
+    meus_usuario = Usuario.query.filter_by(email='felipeweiss912@gmail.com').first()
+    print(meus_usuario.cursos)
 
 
 
