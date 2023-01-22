@@ -1,7 +1,7 @@
 from comunidade import app,db, bcrypt
-from flask import render_template, redirect, flash, request, url_for
-from comunidade.forms import FormLogin, FormCriarConta, FormEditarPerfil
-from comunidade.models import Usuario
+from flask import render_template, redirect, flash, request, url_for, abort
+from comunidade.forms import FormLogin, FormCriarConta, FormEditarPerfil,FormCriarPost
+from comunidade.models import Usuario, Post
 from flask_login import login_user, logout_user, current_user,login_required
 import secrets
 import os
@@ -9,16 +9,15 @@ from PIL import Image
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    posts = Post.query.order_by(Post.id.desc())
+    return render_template('home.html',posts=posts)
 
-@app.route('/contato')
-def contato():
-    return render_template('contato.html')
 
 @app.route('/usuarios')
 @login_required
 def usuarios():
-    return render_template('usuarios.html')
+    lista_usuarios = Usuario.query.all()
+    return render_template('usuarios.html',lista_usuarios=lista_usuarios)
 
 @app.route('/login', methods = ['GET','POST'])
 def login():
@@ -73,10 +72,19 @@ def perfil():
     return render_template('perfil.html', foto_perfil=foto_perfil)
 
 
-@app.route('/post/criar')
+@app.route('/post/criar',methods = ['GET','POST'])
 @login_required
 def criar_post():
-    return render_template('criarpost.html')
+    form = FormCriarPost()
+    
+    if form.validate_on_submit():
+        post = Post(titulo = form.titulo.data, corpo = form.corpo.data, autor = current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash('Post Criado com Sucesso', 'alert-success')
+        return redirect(url_for('home'))
+    
+    return render_template('criar_post.html', form= form)
 
 
 def salvar_imagem(imagem):
@@ -122,3 +130,36 @@ def editar_perfil():
         form.username.data = current_user.username    
     foto_perfil = url_for('static', filename = 'fotosperfil/{}'.format(current_user.foto_perfil))
     return render_template('editarperfil.html', foto_perfil=foto_perfil,form=form)
+
+
+@app.route('/post/<post_id>', methods = ['GET','POST'])
+@login_required
+def exibir_post(post_id):
+    post =Post.query.get(post_id)
+    if current_user == post.autor:
+        form =FormCriarPost()
+        if request.method == 'GET':
+            form.titulo.data = post.titulo
+            form.corpo.data = post.corpo
+        elif form.validate_on_submit():
+            post.titulo = form.titulo.data
+            post.corpo = form.corpo.data
+            db.session.commit()
+            flash('Post Atualizado com Sucesso.', 'alert-success')
+            return redirect(url_for('home'))
+    else:
+        form = None
+
+    return render_template('post.html',post=post, form=form)
+
+@app.route('/post/<post_id>/excluir', methods = ['GET','POST'])
+@login_required
+def excluir_post(post_id):
+    post = Post.query.get(post_id)
+    if current_user == post.autor:
+        db.session.delete(post)
+        db.session.commit()
+        flash('Post Excluido com Sucesso', 'alert-danger' )
+        return redirect(url_for('home'))
+    else:
+        abort(403)
